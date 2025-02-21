@@ -19,7 +19,7 @@ namespace NSMedieval.Modding
         private const string DataDir = "Data";
         private const string ExportedDir = "Exported";
         private const string AddressableDir = "AddressableAssets";
-        public readonly static string[] DefaultSubdirectories = { "Meshes", "Sprites", "Textures", "Exported" };
+        public readonly static string[] DefaultSubdirectories = { "Mesh", "Sprite", "Texture",  "Exported" };
 
         // Used by Addressable Profiles 
         public static string BuildPath =>

@@ -46,8 +46,7 @@ namespace NSMedieval.Editor
                 if (!string.IsNullOrEmpty(path))
                 {
                     modRootPath = path.Replace(Application.dataPath, "Assets");
-                    ;
-                    spriteFolderPath = $"{this.modRootPath}/Sprites";
+                    spriteFolderPath = $"{this.modRootPath}/Sprite";
                     LoadTextures();
                 }
             }
