@@ -136,26 +136,6 @@ namespace NSMedieval.Editor
                 AssetDatabase.SaveAssets();
 
                 Debug.Log($"Assigned texture {texture.name} to {spriteAsset.name} SpriteAsset");
-
-                AddressableAssetSettings settings = AddressableAssetSettingsDefaultObject.Settings;
-                if (settings == null)
-                {
-                    Debug.LogError("Addressables settings not found! Initialize Addressables first.");
-                    return;
-                }
-
-                // Add asset to Addressables
-                string guid = AssetDatabase.AssetPathToGUID(targetPath);
-                var entry = settings.CreateOrMoveEntry(guid, settings.DefaultGroup);
-                entry.address = spriteAsset.name;
-                
-                // Assign Label
-                entry.SetLabel(SpriteAssetsName, true);
-                
-                settings.SetDirty(AddressableAssetSettings.ModificationEvent.EntryMoved, entry, true);
-                AssetDatabase.SaveAssets();
-                
-                Debug.Log($"Added {entry.address} to Addressables with label '{entry.labels}'.");
             }
 
             AssetDatabase.Refresh();

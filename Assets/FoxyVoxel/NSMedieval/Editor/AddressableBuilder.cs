@@ -163,10 +163,9 @@ namespace NSMedieval.Editor
         {
             string s = Path.GetFileName(this.modDirectories[this.selectedToggleIndex]);
             EditorPrefs.SetString(ModdingUtils.SelectedModNameKey, s);
-
-            Debug.Log("Starting Addressables build...");
-            Debug.Log($"Build Path: {ModdingUtils.BuildPath}");
-
+            this.ClearDirectory(ModdingUtils.BuildPath);
+            
+            Debug.Log($"Starting Addressables build at Path: {ModdingUtils.BuildPath}");
             BuildLauncher.BuildAddressables();
         }
 
@@ -275,15 +274,35 @@ namespace NSMedieval.Editor
             
             AddressableAssetGroup CreateGroup(string modName)
             {
-                var defaultLocalGroup = settings.FindGroup("Default Local Group");
+                var defaultLocalGroup = settings.FindGroup("FVMod");
                 if (defaultLocalGroup == null)
                 {
-                    Debug.LogError($"Couldn't find Default Local Group to copy settings from. Make sure that this group exists. Re import project from GitHub if not");
+                    Debug.LogError($"Couldn't find FVMod group to copy settings from. Make sure that this group exists. Re import project from GitHub if not");
                     return null;
                 }
                 
                 Debug.Log($"Created Addressable group: {modName}");
                 return settings.CreateGroup(modName, false, false, true, defaultLocalGroup.Schemas);
+            }
+        }
+        
+        private void ClearDirectory(string path)
+        {
+            if (Directory.Exists(path))
+            {
+                // Delete all files
+                foreach (var file in Directory.GetFiles(path))
+                {
+                    File.Delete(file);
+                }
+
+                // Delete all subdirectories
+                foreach (var dir in Directory.GetDirectories(path))
+                {
+                    Directory.Delete(dir, true);
+                }
+
+                AssetDatabase.Refresh(); // Refresh Unity's Asset Database
             }
         }
     }
