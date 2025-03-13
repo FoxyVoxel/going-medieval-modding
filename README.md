@@ -7,17 +7,17 @@
 * Add project to Unity Hub and open it
 
 ### Making Your Asset Build
-* After Unity loads, you should see the AddressableBuilder window. If not, you can open it manually from the “Going Medieval”  menu.
+* After Unity loads, you should see the AddressableBuilder window. If not, you can open it manually from the “Going Medieval” menu at the top of the screen.
 * Click the **Create New** button
 * In the following popup give your mod a name and click **Create**
 
 ![alt_text](https://github.com/FoxyVoxel/going-medieval-modding/blob/main/ReadmeImages/image1.png "Creating new mod")
 
-* You should be able to see your mod in the **Project Window **now, including empty folders. It’s advised that you don’t edit this directory manually.  
+* You should be able to see your mod in the **Project Window**, including empty folders. It’s advised that you don’t edit this directory manually.  
 
 ![alt_text](https://github.com/FoxyVoxel/going-medieval-modding/blob/main/ReadmeImages/image13.png "Project Window")
 
-* Now you can copy assets to correct folders. 
+* Now, you can copy assets to the correct folders. 
     * .fbx files to **Mesh** 
     * Texture .png files to **Texture**
     * .png files used for UI to **Sprite**. For those, there’s an extra step. Set **Texture Type** to **Sprite (2D and UI)** and apply changes.
