@@ -21,23 +21,22 @@
     * .fbx files to **Mesh** 
     * Texture .png files to **Texture**
     * .png files used for UI to **Sprite**. For those, there’s an extra step. Set **Texture Type** to **Sprite (2D and UI)** and apply changes.
-* Going Medieval uses **TMP Sprite Assets** for displaying icons in line with text. To create, open the “Going Medieval>TMP SpriteAsset Creator” window.
-* Select Mod Root Folder, in our example is “Assets/Mods/FVMod”, this selects all sprites from the **Sprite** folder.
-* The window is now populated with a list, modify selection if needed and click **Create TMP SpriteAssets**.
+* Going Medieval uses **TMP Sprite Assets** to display icons in line with text. Open the “Going Medieval>TMP SpriteAsset Creator” window to create it. Select Mod Root Folder - in our example, that's “Assets/Mods/FVMod”; this selects all sprites from the **Sprite** folder.
+* The window is now populated with a list. Modify the selection if needed and click **Create TMP SpriteAssets**.
 
 
 ![alt_text](https://github.com/FoxyVoxel/going-medieval-modding/blob/main/ReadmeImages/image11.png "Creating TextMeshPro SpriteAssets")
 
-* Back in theAddressableBuilder** window, make sure your mod is selected and click on the **Create Addressables** button.
+* Back in the **AddressableBuilder** window, make sure your mod is selected and click on the **Create Addressables** button.
 
 ![alt_text](https://github.com/FoxyVoxel/going-medieval-modding/blob/main/ReadmeImages/image3.png "Addressable Build")
 
-* Open **Addressable Groups** window (Window>Asset Management>Addressables>Groups) and you should see your newly created mod group set as  (Default) with all assets in it and with all labels correctly applied.
+* Open **Addressable Groups** window (Window>Asset Management>Addressables>Groups), and you should see your newly created mod group set as  (Default) with all assets in it and with all labels correctly applied.
 
 ![alt_text](https://github.com/FoxyVoxel/going-medieval-modding/blob/main/ReadmeImages/image7.png "Addressable Groups")
 
 * Once again, in the **AddressableBuilder** window, check if your mod is selected and click on the **Build** button.
-* After the build is done, asset packages should be placed in mod’s **Exported** folder. Copy contents to your mod’s “/Data/AddressableAssets/” and use created addresses in json files to show assets in game. 
+* After the build is done, asset packages should be placed in the mod’s **Exported** folder.  Copy its contents to your mod’s “Documents/Foxy Voxel/Going Medieval/Mods/Data/AddressableAssets/” and use the new assets in JSON files to show assets in the game. 
 
 ### Next steps
 
