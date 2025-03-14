@@ -1,4 +1,5 @@
-﻿using UnityEditor.AddressableAssets.Settings.GroupSchemas;
+﻿using System;
+using UnityEditor.AddressableAssets.Settings.GroupSchemas;
 
 namespace NSMedieval.Editor
 {
@@ -22,6 +23,8 @@ namespace NSMedieval.Editor
         
         private int selectedToggleIndex;
         
+        private bool shouldRefresh = false;
+        
 
         [MenuItem("Going Medieval/Addressable Builder")]
         public static void ShowWindow()
@@ -32,27 +35,37 @@ namespace NSMedieval.Editor
 
         private void OnEnable()
         {
-           this.Refresh();
+           shouldRefresh = true;
+        }
+        
+        private void OnFocus()
+        {
+           shouldRefresh = true;
         }
 
         private void OnGUI()
         {
+            if (GUILayout.Button("Refresh"))
+            {
+                shouldRefresh = true;
+            }
+            
+            if (shouldRefresh)
+            {
+                shouldRefresh = false;
+                Refresh();
+            }
+            
             // Creates new Mod directory with folder structure
             if (GUILayout.Button("Create New"))
             {
                 ModCreatorPopup.ShowPopupWindow();
             }
             
-            
             if (this.modDirectories.Count == 0)
             {
                 GUILayout.Box("To create a mod add new folder to \"Assets > Mods\" and give it a name");
                 return;
-            }
-            
-            if (GUILayout.Button("Refresh"))
-            {
-                this.RefreshModLists();
             }
 
             GUILayout.Space(10);
@@ -92,32 +105,30 @@ namespace NSMedieval.Editor
         private void UpdateSelection()
         {
             var settings = AddressableAssetSettingsDefaultObject.Settings;
-            if (settings == null)
-            {
-                return;
-            }
+            if (settings == null) return;
 
-            // Get group by selectionIndex 
             int index = 0;
             foreach (var kvp in this.modGroupsById)
             {
                 bool isSelected = index == this.selectedToggleIndex;
                 if (isSelected)
                 {
-                    // Debug.Log($"Selected: {kvp.Key}");
+                    // Debug.Log("Changing DefaultGroup to: " + kvp.Key);
                     settings.DefaultGroup = kvp.Value;
                 }
-                
+
                 var schema = kvp.Value.GetSchema<BundledAssetGroupSchema>();
                 if (schema != null)
                 {
+                    // Debug.Log("Updating IncludeInBuild for: " + kvp.Key);
                     schema.IncludeInBuild = isSelected;
                 }
-                
-                settings.SetDirty(AddressableAssetSettings.ModificationEvent.GroupSchemaModified,  kvp.Value, true);
+
+                settings.SetDirty(AddressableAssetSettings.ModificationEvent.GroupSchemaModified, kvp.Value, true);
                 index++;
             }
         }
+
 
         private void Delete()
         {
@@ -220,17 +231,39 @@ namespace NSMedieval.Editor
                 }
             }
         }
-
-        private void OnFocus()
+        
+        private bool IsGUIThread()
         {
-            this.Refresh();
+            return Event.current != null && Event.current.type != EventType.Layout;
         }
 
         private void Refresh()
         {
-            this.RefreshModLists();
-            this.RefreshAddressableGroups();
-            this.UpdateSelection();
+            if (!IsSafeToRefresh()) 
+            {
+                // Debug.LogWarning("Skipping Refresh() - not in a valid Unity GUI event.");
+                return;
+            }
+            
+            // Debug.Log($"Refresh() STARTED at {Time.realtimeSinceStartup}");
+    
+            try
+            {
+                RefreshModLists();
+                RefreshAddressableGroups();
+                UpdateSelection();
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"ERROR in Refresh(): {ex.Message}\n{ex.StackTrace}");
+            }
+
+            this.shouldRefresh = false;
+        }
+        
+        private bool IsSafeToRefresh()
+        {
+            return Event.current != null && Event.current.type == EventType.Layout;
         }
 
         private void RefreshModLists()
@@ -265,6 +298,7 @@ namespace NSMedieval.Editor
                                               CreateGroup(modName);
                 
                 this.modGroupsById.Add(modName, group);
+                // Debug.Log($"Added group: {modName}  {modDirectory} {group}");
 
                 settings.SetDirty(AddressableAssetSettings.ModificationEvent.GroupAdded, group, true);
                 AssetDatabase.SaveAssets();
