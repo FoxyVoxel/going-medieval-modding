@@ -33,7 +33,7 @@ MonoBehaviour:
     m_Address: foxy_example_icon
     m_ReadOnly: 0
     m_SerializedLabels:
-    - SpriteAssets
+    - SpriteAsset
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: f2b6d29d4cd146f438d376fa2be5c81e
     m_Address: foxy_example

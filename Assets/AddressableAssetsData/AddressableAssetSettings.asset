@@ -15,7 +15,7 @@ MonoBehaviour:
   m_DefaultGroup: f6c4db77d0d95334c896875833e3329e
   m_currentHash:
     serializedVersion: 2
-    Hash: 00000000000000000000000000000000
+    Hash: 276fa48142f1f8d6b102123d83aeb942
   m_OptimizeCatalogSize: 0
   m_BuildRemoteCatalog: 1
   m_BundleLocalCatalog: 0
@@ -102,8 +102,8 @@ MonoBehaviour:
     m_LabelNames:
     - Mesh
     - Texture
-    - SpriteAssets
     - Sprite
+    - SpriteAsset
   m_SchemaTemplates: []
   m_GroupTemplateObjects:
   - {fileID: 11400000, guid: 88fc69c2095156b4da65f21e6a1237d9, type: 2}
