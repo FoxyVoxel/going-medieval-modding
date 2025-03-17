@@ -1,4 +1,6 @@
 ﻿using System;
+using Codice.CM.Client.Differences;
+using PlasticGui;
 using UnityEditor.AddressableAssets.Settings.GroupSchemas;
 
 namespace NSMedieval.Editor
@@ -16,15 +18,33 @@ namespace NSMedieval.Editor
 
     public class AddressableBuilder : EditorWindow
     {
-        private List<string> modDirectories = new();
-        private Dictionary<string, AddressableAssetGroup> modGroupsById = new();
+        private const string DefaultModName = "FVMod";
+        private Dictionary<string, Mod> modsById = new();
 
         private HashSet<string> skipOnCreateAddressables = new HashSet<string>(){"Exported"};
-        
+
         private int selectedToggleIndex;
-        
+
         private bool shouldRefresh = false;
+        private bool creatingNew;
         
+        private static readonly object settingsLock = new object();
+
+
+        private readonly Dictionary<string, string> directoryToLabelDictionary = new()
+        {
+            {"Mesh", "Mesh"},
+            {"Sprite", "Sprite"},
+            {"Texture", "Texture"},
+            {"SpriteAssets", "SpriteAsset"}
+        };
+
+        private string SelectedName => this.selectedToggleIndex >= this.ModIds.Length ? this.ModIds.First() : this.ModIds[this.selectedToggleIndex];
+
+        string[] ModIds => this.modsById.Keys.ToArray();
+
+        private Mod SelectedMod => this.modsById[this.SelectedName];
+
 
         [MenuItem("Going Medieval/Addressable Builder")]
         public static void ShowWindow()
@@ -37,7 +57,7 @@ namespace NSMedieval.Editor
         {
            shouldRefresh = true;
         }
-        
+
         private void OnFocus()
         {
            shouldRefresh = true;
@@ -47,6 +67,7 @@ namespace NSMedieval.Editor
         {
             if (GUILayout.Button("Refresh"))
             {
+                this.modsById.Clear();
                 shouldRefresh = true;
             }
             
@@ -60,9 +81,10 @@ namespace NSMedieval.Editor
             if (GUILayout.Button("Create New"))
             {
                 ModCreatorPopup.ShowPopupWindow();
+                this.creatingNew = true;
             }
             
-            if (this.modDirectories.Count == 0)
+            if (this.modsById.Count == 0)
             {
                 GUILayout.Box("To create a mod add new folder to \"Assets > Mods\" and give it a name");
                 return;
@@ -73,10 +95,11 @@ namespace NSMedieval.Editor
             GUILayout.Label("Mods", EditorStyles.boldLabel);
 
             // Mod selection
-            for (int i = 0; i < this.modDirectories.Count; i++)
+            
+            for (int i = 0; i < this.modsById.Count; i++)
             {
                 bool isSelected = this.selectedToggleIndex == i;
-                bool newValue = GUILayout.Toggle(isSelected, Path.GetFileName(this.modDirectories[i]));
+                bool newValue = GUILayout.Toggle(isSelected, Path.GetFileName(this.ModIds[i]));
                 if (newValue && !isSelected)
                 {
                     this.selectedToggleIndex = i; // Update the selected index
@@ -95,6 +118,11 @@ namespace NSMedieval.Editor
                 this.Build();
             }
             
+            if (this.SelectedMod.Name == DefaultModName)
+            {
+                return;
+            }
+            
             GUILayout.Space(10);
             if (GUILayout.Button("Delete"))
             {
@@ -104,27 +132,10 @@ namespace NSMedieval.Editor
 
         private void UpdateSelection()
         {
-            var settings = AddressableAssetSettingsDefaultObject.Settings;
-            if (settings == null) return;
-
             int index = 0;
-            foreach (var kvp in this.modGroupsById)
+            foreach (var mod in this.modsById.Values)
             {
-                bool isSelected = index == this.selectedToggleIndex;
-                if (isSelected)
-                {
-                    // Debug.Log("Changing DefaultGroup to: " + kvp.Key);
-                    settings.DefaultGroup = kvp.Value;
-                }
-
-                var schema = kvp.Value.GetSchema<BundledAssetGroupSchema>();
-                if (schema != null)
-                {
-                    // Debug.Log("Updating IncludeInBuild for: " + kvp.Key);
-                    schema.IncludeInBuild = isSelected;
-                }
-
-                settings.SetDirty(AddressableAssetSettings.ModificationEvent.GroupSchemaModified, kvp.Value, true);
+                this.ModifySchemaSafely(mod.Group, index);
                 index++;
             }
         }
@@ -132,48 +143,38 @@ namespace NSMedieval.Editor
 
         private void Delete()
         {
-            // Cache id, delete Directory and remove it from the list
-            string directoryPath = this.modDirectories[this.selectedToggleIndex];
-            if (!@Directory.Exists(directoryPath))
+            Mod selected = this.SelectedMod;
+            if (selected.Name == DefaultModName)
             {
-                Debug.LogError($"Directory: {directoryPath} does not exist!");
+                Debug.LogWarning($"Deleting default is not recommended. Addressable builder tools depends on it.");
+                return;
+            }
+            
+            // Cache id, delete Directory and remove it from the list
+            if (!@Directory.Exists(selected.Path))
+            {
+                Debug.LogError($"Directory: {selected.Path} does not exist!");
                 return;
             }
 
-            FileUtil.DeleteFileOrDirectory(directoryPath);
-            string metaFile = directoryPath + ".meta";
+            FileUtil.DeleteFileOrDirectory(selected.Path);
+            string metaFile = selected.Path + ".meta";
             if (File.Exists(metaFile))
             {
                 FileUtil.DeleteFileOrDirectory(metaFile); // Delete .meta file
             }
             
             AssetDatabase.Refresh();
-            this.modDirectories.RemoveAt(this.selectedToggleIndex);
-
-
-            var settings = AddressableAssetSettingsDefaultObject.Settings;
-            if (settings == null)
-            {
-                return;
-            }
-
-            // Cache group before deleting it
-            string modId = Path.GetFileName(directoryPath);
-            var group = this.modGroupsById[modId];
-            this.modGroupsById.Remove(modId);
-
-            // Remove group and save
-            settings.RemoveGroup(group);
-            settings.SetDirty(AddressableAssetSettings.ModificationEvent.GroupRemoved, group, true);
-            AssetDatabase.SaveAssets();
+            this.modsById.Remove(selected.Name);
             
-            Debug.Log($"Deleted Addressable group: {modId}");
+            this.RemoveGroupSafely(selected.Group);
+           
+            this.selectedToggleIndex = 0;
         }
 
         private void Build()
         {
-            string s = Path.GetFileName(this.modDirectories[this.selectedToggleIndex]);
-            EditorPrefs.SetString(ModdingUtils.SelectedModNameKey, s);
+            EditorPrefs.SetString(ModdingUtils.SelectedModNameKey, this.SelectedName);
             this.ClearDirectory(ModdingUtils.BuildPath);
             
             Debug.Log($"Starting Addressables build at Path: {ModdingUtils.BuildPath}");
@@ -188,7 +189,7 @@ namespace NSMedieval.Editor
                 return;
             }
             
-            string[] subdirectories = Directory.GetDirectories(this.modDirectories[this.selectedToggleIndex]);
+            string[] subdirectories = Directory.GetDirectories(this.SelectedMod.Path);
             foreach (var subdirectory in subdirectories)
             {
                 string subdirectoryName = Path.GetFileName(subdirectory);
@@ -197,7 +198,7 @@ namespace NSMedieval.Editor
                     continue;
                 }
                 
-                Debug.Log($"Found subdirectory: {subdirectoryName}");
+                //Debug.Log($"Found subdirectory: {subdirectoryName}");
                 
                 string[] files = Directory.GetFiles(subdirectory);
 
@@ -220,7 +221,7 @@ namespace NSMedieval.Editor
                             // Make the asset addressable
                             var newEntry = settings.CreateOrMoveEntry(AssetDatabase.AssetPathToGUID(relativePath), settings.DefaultGroup);
                             newEntry.address = Path.GetFileNameWithoutExtension(file);
-                            newEntry.SetLabel(subdirectoryName, true);
+                            newEntry.SetLabel(this.directoryToLabelDictionary[subdirectoryName], true);
                             Debug.Log($"Made {relativePath} addressable.");
                         }
                         else
@@ -241,7 +242,7 @@ namespace NSMedieval.Editor
         {
             if (!IsSafeToRefresh()) 
             {
-                // Debug.LogWarning("Skipping Refresh() - not in a valid Unity GUI event.");
+                Debug.LogWarning("Skipping Refresh() - not in a valid Unity GUI event.");
                 return;
             }
             
@@ -274,7 +275,15 @@ namespace NSMedieval.Editor
                 return;
             }
 
-            this.modDirectories = Directory.GetDirectories(path).ToList();
+            List<string> dirs = Directory.GetDirectories(path)
+                .OrderByDescending(Directory.GetCreationTime)
+                .ToList();
+            
+            foreach (string modPath in dirs)
+            {
+                string modName = Path.GetFileName(modPath);
+                this.modsById.TryAdd(modName, new Mod(modName, modPath));
+            }
         }
 
         private void RefreshAddressableGroups()
@@ -285,38 +294,113 @@ namespace NSMedieval.Editor
                 return;
             }
 
-            for (var i = 0; i < this.modDirectories.Count; i++)
+            foreach (Mod mod in this.modsById.Values)
             {
-                var modDirectory = this.modDirectories[i];
-                string modName = Path.GetFileName(modDirectory);
-                if (this.modGroupsById.ContainsKey(modName))
+                if (mod == null)
+                {
+                    Debug.LogError($"Mod is null, this should never happen! Please send this Log trace to devs.");
+                    return;
+                }
+
+                // Check if this group already exists.
+                if (mod.Group != null)
                 {
                     continue;
                 }
 
-                AddressableAssetGroup group = settings.FindGroup(modName) ??
-                                              CreateGroup(modName);
-                
-                this.modGroupsById.Add(modName, group);
-                // Debug.Log($"Added group: {modName}  {modDirectory} {group}");
+                AddressableAssetGroup group = settings.FindGroup(mod.Name);
+                if (group == null)
+                {
+                    group = this.CreateGroupSafely(mod.Name);
+                }
 
-                settings.SetDirty(AddressableAssetSettings.ModificationEvent.GroupAdded, group, true);
-                AssetDatabase.SaveAssets();
+                if (group == null)
+                {
+                    Debug.LogError($"{mod.Name}: Couldn't find or create addressable group");
+                    return;
+                }
+               
+                this.AddGroupSafely(group);
+                mod.AssignGroup(group); 
+                Debug.Log($"Added group: {mod.Name} | {mod.Path} | {group}");
             }
             
-            return;
-            
-            AddressableAssetGroup CreateGroup(string modName)
+            if (this.creatingNew)
             {
-                var defaultLocalGroup = settings.FindGroup("FVMod");
+                if (this.modsById.Count > this.selectedToggleIndex + 1)
+                {
+                    this.selectedToggleIndex = this.modsById.Count - 1;
+                }
+                
+                this.creatingNew = false;
+            }
+        }
+
+        private AddressableAssetGroup CreateGroupSafely(string groupName)
+        {
+            lock (settingsLock)
+            {
+                var settings = AddressableAssetSettingsDefaultObject.Settings;
+                var defaultLocalGroup = settings.FindGroup(DefaultModName);
                 if (defaultLocalGroup == null)
                 {
-                    Debug.LogError($"Couldn't find FVMod group to copy settings from. Make sure that this group exists. Re import project from GitHub if not");
+                    Debug.LogError($"Couldn't find {DefaultModName} group to copy settings from. Make sure that this group exists. Re import project from GitHub if not");
                     return null;
                 }
                 
-                Debug.Log($"Created Addressable group: {modName}");
-                return settings.CreateGroup(modName, false, false, true, defaultLocalGroup.Schemas);
+                Debug.Log($"Created Addressable group: {groupName}");
+                return settings.CreateGroup(groupName, false, false, true, defaultLocalGroup.Schemas);
+            }
+        }
+        
+        private void AddGroupSafely(AddressableAssetGroup group)
+        {
+            lock (settingsLock)
+            {
+                var settings = AddressableAssetSettingsDefaultObject.Settings;
+                // Modify settings
+                 
+                settings.SetDirty(AddressableAssetSettings.ModificationEvent.GroupAdded, group, true);
+                AssetDatabase.SaveAssets();
+            }
+        }
+        
+        private void RemoveGroupSafely(AddressableAssetGroup group)
+        {
+            lock (settingsLock)
+            {
+                var settings = AddressableAssetSettingsDefaultObject.Settings;
+            
+                // Remove group and save
+                settings.RemoveGroup(group);
+                settings.SetDirty(AddressableAssetSettings.ModificationEvent.GroupRemoved, group, true);
+                AssetDatabase.SaveAssets();
+            }
+        }
+        
+        private void ModifySchemaSafely(AddressableAssetGroup group, int index)
+        {
+            lock (settingsLock)
+            {
+                var settings = AddressableAssetSettingsDefaultObject.Settings;
+                // Modify settings
+                
+                bool isSelected = index == this.selectedToggleIndex;
+                if (isSelected)
+                {
+                    // Debug.Log("Changing DefaultGroup to: " + kvp.Key);
+                    settings.DefaultGroup = group;
+                }
+
+                var schema = group.GetSchema<BundledAssetGroupSchema>();
+                if (schema != null)
+                {
+                    // Debug.Log("Updating IncludeInBuild for: " + kvp.Key);
+                    schema.IncludeInBuild = isSelected;
+                }
+
+                settings.SetDirty(AddressableAssetSettings.ModificationEvent.GroupSchemaModified, group, true);
+                AssetDatabase.SaveAssets();
             }
         }
         
@@ -337,6 +421,26 @@ namespace NSMedieval.Editor
                 }
 
                 AssetDatabase.Refresh(); // Refresh Unity's Asset Database
+            }
+        }
+        
+        private class Mod
+        {
+            public Mod(string name, string path)
+            {
+                this.Name = name;
+                this.Path = path;
+            }
+
+            public string Name { get; }
+
+            public string Path { get; }
+
+            public AddressableAssetGroup Group { get; private set; }
+
+            public void AssignGroup(AddressableAssetGroup group)
+            {
+                this.Group = group;
             }
         }
     }
