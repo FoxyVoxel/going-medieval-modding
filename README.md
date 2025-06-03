@@ -39,5 +39,7 @@
 * After the build is done, asset packages should be placed in the mod’s **Exported** folder.  Copy its contents to your mod’s “Documents/Foxy Voxel/Going Medieval/Mods/Data/AddressableAssets/” and use the new assets in JSON files to show assets in the game. 
 
 ### Next steps
+* To test addressable mods in game, download [Foxy Example Mod](https://github.com/FoxyVoxel/going-medieval-modding/blob/main/ExampleMod/Foxy%20Voxel%20Example.zip) and unzip it to **Mods** folder on your hard drive
+* Now, with this mod enabled, you'll get fancy Foxy statue under **Misc** build menu
 
-	TODO: Create Example Mod that can be checked in game
+![Foxy Decoration](https://github.com/FoxyVoxel/going-medieval-modding/blob/main/ReadmeImages/foxy_decoration.png "Modded asset in game")
